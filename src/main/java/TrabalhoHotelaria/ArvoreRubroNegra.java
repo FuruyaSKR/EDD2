@@ -1,5 +1,12 @@
 package TrabalhoHotelaria;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class ArvoreRubroNegra {
     // Enum para definir as cores dos nós
     private enum Cor {
@@ -49,9 +56,15 @@ public class ArvoreRubroNegra {
 
     private void corrigirInsercao(Nodo nodo) {
         Nodo pai, avo;
-        while (nodo != raiz && nodo.pai.cor == Cor.VERMELHO) {
+
+        while (nodo != raiz && nodo.pai != null && nodo.pai.cor == Cor.VERMELHO) {
             pai = nodo.pai;
             avo = pai.pai;
+
+            if (avo == null) { // Adicionado: evitar erro se o avô for nulo
+                break;
+            }
+
             if (pai == avo.esquerdo) {
                 Nodo tio = avo.direito;
                 if (tio != null && tio.cor == Cor.VERMELHO) {
@@ -142,29 +155,59 @@ public class ArvoreRubroNegra {
         }
     }
 
-    public boolean isQuartoDisponivel(String numeroQuarto, String dataCheckin, String dataCheckout) {
-        return isQuartoDisponivelRecursivo(raiz, numeroQuarto, dataCheckin, dataCheckout);
+    // Método para verificar disponibilidade em um intervalo de datas
+    public boolean isQuartoDisponivelIntervalo(String numeroQuarto, String dataCheckin, String dataCheckout) {
+        return isQuartoDisponivelIntervaloRecursivo(raiz, numeroQuarto, dataCheckin, dataCheckout);
     }
 
-    private boolean isQuartoDisponivelRecursivo(Nodo nodo, String numeroQuarto, String dataCheckin,
+    private boolean isQuartoDisponivelIntervaloRecursivo(Nodo nodo, String numeroQuarto, String dataCheckin,
             String dataCheckout) {
         if (nodo == null) {
-            return true; // Se chegamos a um nó vazio, não há conflitos
+            return true; // No conflict if node is null
         }
 
         Reserva reservaAtual = nodo.reserva;
 
-        // Verificar se o número do quarto coincide e há conflito de datas
+        // Check for overlapping dates and matching room numbers
         if (reservaAtual.getQuarto().getNumero().equals(numeroQuarto)) {
             if (conflitoDeDatas(dataCheckin, dataCheckout, reservaAtual.getDataCheckin(),
                     reservaAtual.getDataCheckout())) {
-                return false; // Quarto não está disponível
+                System.out.printf("[DEBUG] Quarto %s está ocupado entre %s e %s (reservado: %s - %s)%n",
+                        numeroQuarto, dataCheckin, dataCheckout, reservaAtual.getDataCheckin(),
+                        reservaAtual.getDataCheckout());
+                return false; // Room is occupied
+            }
+        }
+
+        // Check subtrees
+        return isQuartoDisponivelIntervaloRecursivo(nodo.esquerdo, numeroQuarto, dataCheckin, dataCheckout) &&
+                isQuartoDisponivelIntervaloRecursivo(nodo.direito, numeroQuarto, dataCheckin, dataCheckout);
+    }
+
+    // Método para verificar disponibilidade em uma data específica
+    public boolean isQuartoDisponivel(String numeroQuarto, String dataConsulta) {
+        return isQuartoDisponivelRecursivo(raiz, numeroQuarto, dataConsulta);
+    }
+
+    private boolean isQuartoDisponivelRecursivo(Nodo nodo, String numeroQuarto, String dataConsulta) {
+        if (nodo == null) {
+            return true; // Se chegamos a um nó vazio, o quarto está disponível
+        }
+
+        Reserva reservaAtual = nodo.reserva;
+
+        // Verificar se o número do quarto coincide e a data de consulta está dentro do
+        // intervalo
+        if (reservaAtual.getQuarto().getNumero().equals(numeroQuarto)) {
+            if (dataConsulta.compareTo(reservaAtual.getDataCheckin()) >= 0 &&
+                    dataConsulta.compareTo(reservaAtual.getDataCheckout()) <= 0) {
+                return false; // Quarto está ocupado
             }
         }
 
         // Verificar recursivamente na subárvore esquerda e direita
-        return isQuartoDisponivelRecursivo(nodo.esquerdo, numeroQuarto, dataCheckin, dataCheckout) &&
-                isQuartoDisponivelRecursivo(nodo.direito, numeroQuarto, dataCheckin, dataCheckout);
+        return isQuartoDisponivelRecursivo(nodo.esquerdo, numeroQuarto, dataConsulta) &&
+                isQuartoDisponivelRecursivo(nodo.direito, numeroQuarto, dataConsulta);
     }
 
     private boolean conflitoDeDatas(String dataCheckinNova, String dataCheckoutNova, String dataCheckinExistente,
@@ -191,4 +234,210 @@ public class ArvoreRubroNegra {
             mostrarArvoreRecursiva(nodo.esquerdo, novoPrefixo, false);
         }
     }
+
+    public boolean cancelarReserva(String chave, ArvoreRubroNegra historicoReservas) {
+        System.out.println("\n--------------------");
+        System.out.println("Cancelando Reserva: Cliente '" + chave + "'");
+        System.out.println("--------------------");
+
+        Nodo nodoParaRemover = buscarNodo(raiz, chave);
+        if (nodoParaRemover == null) {
+            System.out.println("[LOG] Reserva não encontrada para cancelamento. Chave: " + chave);
+            return false;
+        }
+
+        System.out.println("[LOG] Cancelando a seguinte reserva:");
+        System.out.println(nodoParaRemover.reserva);
+
+        // Adicionar ao histórico de reservas canceladas
+        System.out.println("[LOG] Adicionando reserva ao histórico...");
+        historicoReservas.inserir(nodoParaRemover.chave, nodoParaRemover.reserva);
+
+        // Remover da árvore principal
+        raiz = removerNodo(raiz, chave);
+        System.out.println("[LOG] Reserva removida da árvore principal.");
+
+        System.out.println("\n[LOG] Estado Atual da Árvore Principal:");
+        mostrarArvore();
+        System.out.println("\n[LOG] Estado Atual do Histórico de Reservas Canceladas:");
+        historicoReservas.mostrarArvore();
+
+        System.out.println("--------------------\n");
+        return true;
+    }
+
+    private Nodo removerNodo(Nodo atual, String chave) {
+        if (atual == null) {
+            return null;
+        }
+
+        if (chave.compareTo(atual.chave) < 0) {
+            atual.esquerdo = removerNodo(atual.esquerdo, chave);
+        } else if (chave.compareTo(atual.chave) > 0) {
+            atual.direito = removerNodo(atual.direito, chave);
+        } else {
+            // Nodo encontrado, executar a remoção
+            if (atual.esquerdo == null) {
+                return atual.direito;
+            } else if (atual.direito == null) {
+                return atual.esquerdo;
+            } else {
+                Nodo substituto = encontrarMenor(atual.direito);
+                atual.chave = substituto.chave;
+                atual.reserva = substituto.reserva;
+                atual.direito = removerNodo(atual.direito, substituto.chave);
+            }
+        }
+        return atual;
+    }
+
+    private Nodo encontrarMenor(Nodo nodo) {
+        while (nodo.esquerdo != null) {
+            nodo = nodo.esquerdo;
+        }
+        return nodo;
+    }
+
+    // Exibir histórico de reservas canceladas
+    public void mostrarHistorico(ArvoreRubroNegra historicoReservas) {
+        System.out.println("Histórico de Reservas Canceladas:");
+        historicoReservas.mostrarArvore();
+    }
+
+    public void consultarReservaPorCliente(String chave) {
+        Reserva reserva = buscar(chave);
+        if (reserva != null) {
+            System.out.println("Reserva encontrada:");
+            System.out.println(reserva);
+        } else {
+            System.out.println("Nenhuma reserva encontrada para a chave: " + chave);
+        }
+    }
+
+    public void consultarDisponibilidadeQuartos(List<Quarto> listaQuartos, String dataConsulta, String categoria) {
+        System.out.println("\n====================");
+        System.out.println("Consulta de Disponibilidade de Quartos");
+        System.out.println("Categoria: " + categoria + " | Data: " + dataConsulta);
+        System.out.println("====================");
+
+        for (Quarto quarto : listaQuartos) {
+            boolean disponivel = isQuartoDisponivel(quarto.getNumero(), dataConsulta);
+            if (quarto.getCategoria().equalsIgnoreCase(categoria)) {
+                if (disponivel) {
+                    System.out.println("[DISPONÍVEL] " + quarto);
+                } else {
+                    System.out.println("[OCUPADO] " + quarto.getNumero());
+                }
+            }
+        }
+
+        System.out.println("====================\n");
+    }
+
+    // Listar reservas por data de check-in
+    public void listarReservasPorDataCheckin() {
+        List<Reserva> reservas = new ArrayList<>();
+        coletarReservasEmOrdem(raiz, reservas);
+
+        // Ordenar reservas por data de check-in
+        Collections.sort(reservas, Comparator.comparing(Reserva::getDataCheckin));
+
+        System.out.println("\n====================");
+        System.out.println("Listagem de Reservas por Data de Check-in");
+        System.out.println("====================");
+        for (Reserva reserva : reservas) {
+            System.out.println(reserva);
+        }
+        System.out.println("====================\n");
+    }
+
+    // Método recursivo para coletar todas as reservas em ordem
+    private void coletarReservasEmOrdem(Nodo nodo, List<Reserva> reservas) {
+        if (nodo != null) {
+            coletarReservasEmOrdem(nodo.esquerdo, reservas); // Visitar subárvore esquerda
+            reservas.add(nodo.reserva); // Adicionar reserva atual
+            coletarReservasEmOrdem(nodo.direito, reservas); // Visitar subárvore direita
+        }
+    }
+
+    public double calcularTaxaOcupacao(List<Quarto> listaQuartos, String dataInicio, String dataFim) {
+        int totalQuartos = listaQuartos.size(); // Total rooms
+        int quartosOcupados = 0; // Counter for occupied rooms
+
+        // Avoid division by zero
+        if (totalQuartos == 0) {
+            return 0.0;
+        }
+
+        // Calculate occupancy rate
+        double taxa = ((double) quartosOcupados / totalQuartos) * 100.0;
+        return taxa;
+    }
+
+    public void quartosMaisMenosReservados(List<Quarto> listaQuartos) {
+        // Mapa para armazenar o número de reservas por quarto
+        Map<String, Integer> reservasPorQuarto = new HashMap<>();
+
+        // Inicializar o mapa com os quartos
+        for (Quarto quarto : listaQuartos) {
+            reservasPorQuarto.put(quarto.getNumero(), 0);
+        }
+
+        // Contar reservas por quarto
+        contarReservasPorQuarto(raiz, reservasPorQuarto);
+
+        // Encontrar os quartos mais e menos reservados
+        String maisReservado = null, menosReservado = null;
+        int maxReservas = Integer.MIN_VALUE, minReservas = Integer.MAX_VALUE;
+
+        for (Map.Entry<String, Integer> entry : reservasPorQuarto.entrySet()) {
+            int reservas = entry.getValue();
+            String numeroQuarto = entry.getKey();
+
+            if (reservas > maxReservas) {
+                maxReservas = reservas;
+                maisReservado = numeroQuarto;
+            }
+            if (reservas < minReservas) {
+                minReservas = reservas;
+                menosReservado = numeroQuarto;
+            }
+        }
+
+        // Exibir resultados
+        System.out.println("\n====================");
+        System.out.println("Relatório de Quartos Mais e Menos Reservados");
+        System.out.println("====================");
+        System.out.println("Quarto Mais Reservado: " + maisReservado + " (Reservas: " + maxReservas + ")");
+        System.out.println("Quarto Menos Reservado: " + menosReservado + " (Reservas: " + minReservas + ")");
+        System.out.println("====================\n");
+    }
+
+    // Método recursivo para contar reservas por quarto
+    private void contarReservasPorQuarto(Nodo nodo, Map<String, Integer> reservasPorQuarto) {
+        if (nodo != null) {
+            contarReservasPorQuarto(nodo.esquerdo, reservasPorQuarto);
+
+            String numeroQuarto = nodo.reserva.getQuarto().getNumero();
+            reservasPorQuarto.put(numeroQuarto, reservasPorQuarto.get(numeroQuarto) + 1);
+
+            contarReservasPorQuarto(nodo.direito, reservasPorQuarto);
+        }
+    }
+
+    public int numeroCancelamentosNoPeriodo(ArvoreRubroNegra historicoReservas, String dataInicio, String dataFim) {
+        List<Reserva> reservasCanceladas = new ArrayList<>();
+        coletarReservasEmOrdem(historicoReservas.raiz, reservasCanceladas);
+
+        int cancelamentos = 0;
+
+        for (Reserva reserva : reservasCanceladas) {
+            if (conflitoDeDatas(dataInicio, dataFim, reserva.getDataCheckin(), reserva.getDataCheckout())) {
+                cancelamentos++;
+            }
+        }
+
+        return cancelamentos;
+    }
+
 }
