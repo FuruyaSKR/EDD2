@@ -6,6 +6,23 @@ public class Reserva {
     private String dataCheckin;
     private String dataCheckout;
 
+    public Reserva(Cliente cliente, Quarto quarto, String dataCheckin, String dataCheckout) {
+        this.cliente = cliente;
+        this.quarto = quarto;
+        this.dataCheckin = dataCheckin;
+        this.dataCheckout = dataCheckout;
+    }
+
+    @Override
+    public String toString() {
+        return "Reserva{" +
+                "Cliente=" + cliente +
+                ", Quarto=" + quarto +
+                ", DataCheckin='" + dataCheckin + '\'' +
+                ", DataCheckout='" + dataCheckout + '\'' +
+                '}';
+    }
+
     public Cliente getCliente() {
         return this.cliente;
     }
@@ -38,20 +55,4 @@ public class Reserva {
         this.dataCheckout = dataCheckout;
     }
 
-    public Reserva(Cliente cliente, Quarto quarto, String dataCheckin, String dataCheckout) {
-        this.cliente = cliente;
-        this.quarto = quarto;
-        this.dataCheckin = dataCheckin;
-        this.dataCheckout = dataCheckout;
-    }
-
-    @Override
-    public String toString() {
-        return "Reserva{" +
-                "Cliente=" + cliente +
-                ", Quarto=" + quarto +
-                ", DataCheckin='" + dataCheckin + '\'' +
-                ", DataCheckout='" + dataCheckout + '\'' +
-                '}';
-    }
 }

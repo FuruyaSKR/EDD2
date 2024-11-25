@@ -1,9 +1,24 @@
 package TrabalhoHotelaria;
 
 public class Cliente {
-    private String id; // ID único do cliente
-    private String cpf; // CPF do cliente
-    private String nome; // Nome do cliente
+    private String id;
+    private String cpf;
+    private String nome;
+
+    public Cliente(String id, String cpf, String nome) {
+        this.id = id;
+        this.cpf = cpf;
+        this.nome = nome;
+    }
+
+    @Override
+    public String toString() {
+        return "Cliente{" +
+                "ID='" + id + '\'' +
+                ", CPF='" + cpf + '\'' +
+                ", Nome='" + nome + '\'' +
+                '}';
+    }
 
     public String getId() {
         return this.id;
@@ -29,20 +44,4 @@ public class Cliente {
         this.nome = nome;
     }
 
-    // Construtor
-    public Cliente(String id, String cpf, String nome) {
-        this.id = id;
-        this.cpf = cpf;
-        this.nome = nome;
-    }
-
-    // Método para exibir informações do cliente
-    @Override
-    public String toString() {
-        return "Cliente{" +
-                "ID='" + id + '\'' +
-                ", CPF='" + cpf + '\'' +
-                ", Nome='" + nome + '\'' +
-                '}';
-    }
 }

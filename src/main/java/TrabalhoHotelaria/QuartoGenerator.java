@@ -13,7 +13,7 @@ public class QuartoGenerator {
         for (int andar = 1; andar <= andares; andar++) {
             for (int numeroQuarto = 1; numeroQuarto <= quartosPorAndar; numeroQuarto++) {
                 String numero = andar + String.format("%02d", numeroQuarto); // Ex.: "101", "102"
-                String categoria = categorias[categoriaIndex % categorias.length]; // Categoria cíclica
+                String categoria = categorias[categoriaIndex % categorias.length];
                 listaQuartos.add(new Quarto(numero, categoria));
                 categoriaIndex++; // Avança para a próxima categoria
             }

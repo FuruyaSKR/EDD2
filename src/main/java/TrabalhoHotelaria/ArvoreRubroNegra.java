@@ -61,7 +61,8 @@ public class ArvoreRubroNegra {
             pai = nodo.pai;
             avo = pai.pai;
 
-            if (avo == null) { // Adicionado: evitar erro se o avô for nulo
+            // Adicionado: evitar erro se o avô for nulo
+            if (avo == null) {
                 break;
             }
 
@@ -138,6 +139,56 @@ public class ArvoreRubroNegra {
         nodo.pai = novoNodo;
     }
 
+    // Método para exibir a árvore
+    public void mostrarArvore() {
+        if (raiz == null) {
+            System.out.println("A árvore está vazia!");
+        } else {
+            mostrarArvoreRecursiva(raiz, "", true);
+        }
+    }
+
+    private void mostrarArvoreRecursiva(Nodo nodo, String prefixo, boolean isFilhoDireito) {
+        if (nodo != null) {
+            System.out.println(prefixo + (isFilhoDireito ? "|---" : "|---") + nodo.chave + " (" + nodo.cor + ")");
+            String novoPrefixo = prefixo + (isFilhoDireito ? " " : "|");
+            mostrarArvoreRecursiva(nodo.direito, novoPrefixo, true);
+            mostrarArvoreRecursiva(nodo.esquerdo, novoPrefixo, false);
+        }
+    }
+
+    private Nodo removerNodo(Nodo atual, String chave) {
+        if (atual == null) {
+            return null;
+        }
+
+        if (chave.compareTo(atual.chave) < 0) {
+            atual.esquerdo = removerNodo(atual.esquerdo, chave);
+        } else if (chave.compareTo(atual.chave) > 0) {
+            atual.direito = removerNodo(atual.direito, chave);
+        } else {
+            // Nodo encontrado, executar a remoção
+            if (atual.esquerdo == null) {
+                return atual.direito;
+            } else if (atual.direito == null) {
+                return atual.esquerdo;
+            } else {
+                Nodo substituto = encontrarMenor(atual.direito);
+                atual.chave = substituto.chave;
+                atual.reserva = substituto.reserva;
+                atual.direito = removerNodo(atual.direito, substituto.chave);
+            }
+        }
+        return atual;
+    }
+
+    private Nodo encontrarMenor(Nodo nodo) {
+        while (nodo.esquerdo != null) {
+            nodo = nodo.esquerdo;
+        }
+        return nodo;
+    }
+
     // Método de busca por chave (ID ou CPF)
     public Reserva buscar(String chave) {
         Nodo resultado = buscarNodo(raiz, chave);
@@ -163,23 +214,21 @@ public class ArvoreRubroNegra {
     private boolean isQuartoDisponivelIntervaloRecursivo(Nodo nodo, String numeroQuarto, String dataCheckin,
             String dataCheckout) {
         if (nodo == null) {
-            return true; // No conflict if node is null
+            return true;
         }
 
         Reserva reservaAtual = nodo.reserva;
 
-        // Check for overlapping dates and matching room numbers
         if (reservaAtual.getQuarto().getNumero().equals(numeroQuarto)) {
             if (conflitoDeDatas(dataCheckin, dataCheckout, reservaAtual.getDataCheckin(),
                     reservaAtual.getDataCheckout())) {
-                System.out.printf("[DEBUG] Quarto %s está ocupado entre %s e %s (reservado: %s - %s)%n",
+                System.out.printf("Quarto %s está ocupado entre %s e %s (reservado: %s - %s)%n",
                         numeroQuarto, dataCheckin, dataCheckout, reservaAtual.getDataCheckin(),
                         reservaAtual.getDataCheckout());
-                return false; // Room is occupied
+                return false; // Quarto Ocupado
             }
         }
 
-        // Check subtrees
         return isQuartoDisponivelIntervaloRecursivo(nodo.esquerdo, numeroQuarto, dataCheckin, dataCheckout) &&
                 isQuartoDisponivelIntervaloRecursivo(nodo.direito, numeroQuarto, dataCheckin, dataCheckout);
     }
@@ -217,85 +266,30 @@ public class ArvoreRubroNegra {
                 || dataCheckinNova.compareTo(dataCheckoutExistente) >= 0);
     }
 
-    // Método para exibir a árvore
-    public void mostrarArvore() {
-        if (raiz == null) {
-            System.out.println("A árvore está vazia!");
-        } else {
-            mostrarArvoreRecursiva(raiz, "", true);
-        }
-    }
-
-    private void mostrarArvoreRecursiva(Nodo nodo, String prefixo, boolean isFilhoDireito) {
-        if (nodo != null) {
-            System.out.println(prefixo + (isFilhoDireito ? "|---" : "|---") + nodo.chave + " (" + nodo.cor + ")");
-            String novoPrefixo = prefixo + (isFilhoDireito ? " " : "|");
-            mostrarArvoreRecursiva(nodo.direito, novoPrefixo, true);
-            mostrarArvoreRecursiva(nodo.esquerdo, novoPrefixo, false);
-        }
-    }
-
     public boolean cancelarReserva(String chave, ArvoreRubroNegra historicoReservas) {
-        System.out.println("\n--------------------");
+        System.out.println("\n====================");
         System.out.println("Cancelando Reserva: Cliente '" + chave + "'");
-        System.out.println("--------------------");
+        System.out.println("====================\n");
 
         Nodo nodoParaRemover = buscarNodo(raiz, chave);
         if (nodoParaRemover == null) {
-            System.out.println("[LOG] Reserva não encontrada para cancelamento. Chave: " + chave);
             return false;
         }
 
-        System.out.println("[LOG] Cancelando a seguinte reserva:");
-        System.out.println(nodoParaRemover.reserva);
+        System.out.println("Cancelando a seguinte reserva:");
+        System.out.println(nodoParaRemover.reserva + "\n");
 
         // Adicionar ao histórico de reservas canceladas
-        System.out.println("[LOG] Adicionando reserva ao histórico...");
         historicoReservas.inserir(nodoParaRemover.chave, nodoParaRemover.reserva);
 
         // Remover da árvore principal
         raiz = removerNodo(raiz, chave);
-        System.out.println("[LOG] Reserva removida da árvore principal.");
 
-        System.out.println("\n[LOG] Estado Atual da Árvore Principal:");
-        mostrarArvore();
-        System.out.println("\n[LOG] Estado Atual do Histórico de Reservas Canceladas:");
+        System.out.println("\nEstado Atual do Histórico de Reservas Canceladas:");
         historicoReservas.mostrarArvore();
 
-        System.out.println("--------------------\n");
+        System.out.println("\n====================\n");
         return true;
-    }
-
-    private Nodo removerNodo(Nodo atual, String chave) {
-        if (atual == null) {
-            return null;
-        }
-
-        if (chave.compareTo(atual.chave) < 0) {
-            atual.esquerdo = removerNodo(atual.esquerdo, chave);
-        } else if (chave.compareTo(atual.chave) > 0) {
-            atual.direito = removerNodo(atual.direito, chave);
-        } else {
-            // Nodo encontrado, executar a remoção
-            if (atual.esquerdo == null) {
-                return atual.direito;
-            } else if (atual.direito == null) {
-                return atual.esquerdo;
-            } else {
-                Nodo substituto = encontrarMenor(atual.direito);
-                atual.chave = substituto.chave;
-                atual.reserva = substituto.reserva;
-                atual.direito = removerNodo(atual.direito, substituto.chave);
-            }
-        }
-        return atual;
-    }
-
-    private Nodo encontrarMenor(Nodo nodo) {
-        while (nodo.esquerdo != null) {
-            nodo = nodo.esquerdo;
-        }
-        return nodo;
     }
 
     // Exibir histórico de reservas canceladas
@@ -316,9 +310,9 @@ public class ArvoreRubroNegra {
 
     public void consultarDisponibilidadeQuartos(List<Quarto> listaQuartos, String dataConsulta, String categoria) {
         System.out.println("\n====================");
-        System.out.println("Consulta de Disponibilidade de Quartos");
+        System.out.println("Consulta de Disponibilidade de Quartos\n");
         System.out.println("Categoria: " + categoria + " | Data: " + dataConsulta);
-        System.out.println("====================");
+        System.out.println("====================\n");
 
         for (Quarto quarto : listaQuartos) {
             boolean disponivel = isQuartoDisponivel(quarto.getNumero(), dataConsulta);
@@ -331,7 +325,7 @@ public class ArvoreRubroNegra {
             }
         }
 
-        System.out.println("====================\n");
+        System.out.println("\n====================\n");
     }
 
     // Listar reservas por data de check-in
@@ -344,11 +338,11 @@ public class ArvoreRubroNegra {
 
         System.out.println("\n====================");
         System.out.println("Listagem de Reservas por Data de Check-in");
-        System.out.println("====================");
+        System.out.println("====================\n");
         for (Reserva reserva : reservas) {
             System.out.println(reserva);
         }
-        System.out.println("====================\n");
+        System.out.println("\n====================\n");
     }
 
     // Método recursivo para coletar todas as reservas em ordem
@@ -361,15 +355,14 @@ public class ArvoreRubroNegra {
     }
 
     public double calcularTaxaOcupacao(List<Quarto> listaQuartos, String dataInicio, String dataFim) {
-        int totalQuartos = listaQuartos.size(); // Total rooms
-        int quartosOcupados = 0; // Counter for occupied rooms
+        int totalQuartos = listaQuartos.size(); // Verifica o total de quartos
+        int quartosOcupados = 0; // Contador para os quartos ocupados
 
-        // Avoid division by zero
         if (totalQuartos == 0) {
             return 0.0;
         }
 
-        // Calculate occupancy rate
+        // Calcula a taxa de ocupação
         double taxa = ((double) quartosOcupados / totalQuartos) * 100.0;
         return taxa;
     }
@@ -407,10 +400,10 @@ public class ArvoreRubroNegra {
         // Exibir resultados
         System.out.println("\n====================");
         System.out.println("Relatório de Quartos Mais e Menos Reservados");
-        System.out.println("====================");
+        System.out.println("====================\n");
         System.out.println("Quarto Mais Reservado: " + maisReservado + " (Reservas: " + maxReservas + ")");
         System.out.println("Quarto Menos Reservado: " + menosReservado + " (Reservas: " + minReservas + ")");
-        System.out.println("====================\n");
+        System.out.println("\n====================\n");
     }
 
     // Método recursivo para contar reservas por quarto
